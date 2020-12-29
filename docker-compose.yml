@@ -1,0 +1,77 @@
+version: '2.1'
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    ports:
+      - 15672:15672
+    volumes:
+      - ./rabbitmq_volume:/var/lib/rabbitmq/
+  mailcatcher:
+    image: schickling/mailcatcher
+    ports:
+      - 1080:1080 
+  user-api:
+    build:
+      context: .
+      dockerfile: ./user_api/Dockerfile
+    ports:
+      - 8081:8080
+  create-user-consumer:
+    build:
+      context: .
+      dockerfile: ./create_user_consumer/Dockerfile
+    environment:
+      MQ_HOST: rabbitmq
+      EXCHANGE: event_exchange
+      QUEUE_NAME: create_user_operation_queue
+      API_HOST: http://user-api:8080
+    depends_on:
+      - rabbitmq
+  delete-user-consumer:
+    build:
+      context: .
+      dockerfile: ./delete_user_consumer/Dockerfile
+    environment:
+      MQ_HOST: rabbitmq
+      EXCHANGE: event_exchange
+      QUEUE_NAME: delete_user_operation_queue
+      API_HOST: http://user-api:8080
+    depends_on:
+      - rabbitmq
+  send-mail-consumer:
+    build:
+      context: .
+      dockerfile: ./send_mail_consumer/Dockerfile
+    environment:
+      MQ_HOST: rabbitmq
+      EXCHANGE: event_exchange
+      MAIL_HOST: mailcatcher
+      MAIL_PORT: 1025
+      QUEUE_NAME: create_user_mail_queue
+    depends_on:
+      - rabbitmq
+  external-user-api:
+    ports:
+      - 8080:8080
+    build:
+      context: .
+      dockerfile: ./external_user_api/Dockerfile
+    environment:
+      MQ_HOST: rabbitmq
+      EXCHANGE: event_exchange
+    depends_on:
+      - rabbitmq
+  dev:
+    build:
+      context: .
+      dockerfile: ./dev/Dockerfile
+    environment:
+      MQ_HOST: rabbitmq
+      EXCHANGE: event_exchange
+      API_HOST: http://user-api:8080
+      QUEUE_NAME: delete_user_operation_queue
+    tty: true
+    depends_on:
+      - rabbitmq
+    volumes:
+      - .:/work

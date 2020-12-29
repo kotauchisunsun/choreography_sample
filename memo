@@ -1,0 +1,1 @@
+docker run --rm -v "${PWD}:/local" openapitools/openapi-generator-cli generate -i /local/user_api/user_api.json -g python -o /local/client/
